@@ -52,10 +52,6 @@
                     <value>{HOST.NAME}</value>
                 </parameter>
                 <parameter>
-                    <name>host_ip</name>
-                    <value>{HOST.IP}</value>
-                </parameter>
-                <parameter>
                     <name>zabbix_url</name>
                     <value>{$ZABBIX_URL}</value>
                 </parameter>
