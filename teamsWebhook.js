@@ -48,25 +48,37 @@ function createProblemURL(zabbixURL, triggerID, eventID) {
     return problemURL;
 }
 
-function createPayload(
+function createMessage(
     eventStatus,
     eventSeverityColor,
-    eventSeverity = false,
-    eventDate = false,
-    eventTime = false,
+    eventSeverity,
+    eventDate,
+    eventTime,
     triggerName,
-    hostName = false,
-    hostIP = false,
+    hostName,
     problemURL
     ) {
-    var payload = {
+    var message = {
         "@context": "http://schema.org/extensions",
         "@type": "MessageCard",
         "title": "{0}: {1}".format(eventStatus, triggerName),
         "summary": "Zabbix notification",
         "themeColor": eventSeverityColor,
         "sections": [{
-            "facts": []
+            "facts": [
+                {
+                    "name": "Host",
+                    "value": hostName
+                },
+                {
+                    "name": "Event time",
+                    "value": "{0} {1}".format(eventDate, eventTime)
+                },
+                {
+                    "name": "Severity",
+                    "value": eventSeverity
+                }
+            ]
         }],
         "potentialAction": [
             {
@@ -81,36 +93,13 @@ function createPayload(
             }
         ]
     };
-    if (hostName) {
-        payload.sections[0].facts.push({
-            "name": "Host",
-            "value": hostName
-        });
-    }
-    if (hostIP) {
-        payload.sections[0].facts.push({
-            "name": "IP",
-            "value": hostIP
-        });
-    }
-    if (eventSeverity) {
-        payload.sections[0].facts.push({
-            "name": "Severity",
-            "value": eventSeverity
-        });
-    }
-    if (eventDate && eventTime) {
-        payload.sections[0].facts.push({
-            "name": "Event time",
-            "value": "{0} {1}".format(eventDate, eventTime)
-        });
-    }
-    return payload;
+    return message;
 }
 
 try {
+    req.AddHeader("Content-Type: application/json; charset=utf-8");
     if (isEventProblem(params)) {
-        fields = createPayload(
+        fields = createMessage(
                 EVENT_STATUS.PROBLEM,
                 SEVERITY_COLORS[params.eventNseverity] || SEVERITY_COLORS[0],
                 params.eventSeverity,
@@ -118,17 +107,17 @@ try {
                 params.eventTime,
                 params.triggerName,
                 params.hostName,
-                params.hostIP,
                 createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
             );
+    
         var resp = req.Post(params.teamsURL, JSON.stringify(fields));
         if (req.Status() != 200) {
             throw JSON.parse(resp).message; 
         }
         resp = JSON.parse(resp);
-
+    
     } else if (isEventResolve(params)) {
-        fields = createPayload(
+        fields = createMessage(
                 EVENT_STATUS.RESOLVED,
                 SEVERITY_COLORS[6],
                 params.eventSeverity,
@@ -136,16 +125,15 @@ try {
                 params.eventTime,
                 params.triggerName,
                 params.hostName,
-                params.hostIP,
                 createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
             );
-        var resp = req.Post(params.teamsURL, JSON.stringify(fields));
-        if (req.Status() != 200) {
-            throw JSON.parse(resp).message; 
-        }
-        resp = JSON.parse(resp);
+            var resp = req.Post(params.teamsURL, JSON.stringify(fields));
+            if (req.Status() != 200) {
+                throw JSON.parse(resp).message; 
+            }
+            resp = JSON.parse(resp);
     }
-    return JSON.stringify(resp);
+    return JSON.stringify(fields);
 } catch (error) {
     throw error;
 }
