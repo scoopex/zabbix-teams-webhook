@@ -48,7 +48,7 @@ function createProblemURL(zabbixURL, triggerID, eventID) {
     return problemURL;
 }
 
-function createMessage(
+function createPayload(
     eventStatus,
     eventSeverityColor,
     eventSeverity,
@@ -56,29 +56,17 @@ function createMessage(
     eventTime,
     triggerName,
     hostName,
+    hostIP,
     problemURL
     ) {
-    var message = {
+    var payload = {
         "@context": "http://schema.org/extensions",
         "@type": "MessageCard",
         "title": "{0}: {1}".format(eventStatus, triggerName),
         "summary": "Zabbix notification",
         "themeColor": eventSeverityColor,
         "sections": [{
-            "facts": [
-                {
-                    "name": "Host",
-                    "value": hostName
-                },
-                {
-                    "name": "Event time",
-                    "value": "{0} {1}".format(eventDate, eventTime)
-                },
-                {
-                    "name": "Severity",
-                    "value": eventSeverity
-                }
-            ]
+            "facts": []
         }],
         "potentialAction": [
             {
@@ -93,13 +81,37 @@ function createMessage(
             }
         ]
     };
-    return message;
+    if (hostName) {
+        payload.sections[0].facts.push({
+            "name": "Host",
+            "value": hostName
+        });
+    }
+    if (hostIP) {
+        payload.sections[0].facts.push({
+            "name": "IP",
+            "value": hostIP
+        });
+    }
+    if (eventSeverity) {
+        payload.sections[0].facts.push({
+            "name": "Severity",
+            "value": eventSeverity
+        });
+    }
+    if (eventDate && eventTime) {
+        payload.sections[0].facts.push({
+            "name": "Event time",
+            "value": "{0} {1}".format(eventDate, eventTime)
+        });
+    }
+    return payload;
 }
 
 try {
     req.AddHeader("Content-Type: application/json; charset=utf-8");
     if (isEventProblem(params)) {
-        fields = createMessage(
+        fields = createPayload(
                 EVENT_STATUS.PROBLEM,
                 SEVERITY_COLORS[params.eventNseverity] || SEVERITY_COLORS[0],
                 params.eventSeverity,
@@ -107,6 +119,7 @@ try {
                 params.eventTime,
                 params.triggerName,
                 params.hostName,
+                params.hostIP,
                 createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
             );
     
@@ -117,7 +130,7 @@ try {
         resp = JSON.parse(resp);
     
     } else if (isEventResolve(params)) {
-        fields = createMessage(
+        fields = createPayload(
                 EVENT_STATUS.RESOLVED,
                 SEVERITY_COLORS[6],
                 params.eventSeverity,
@@ -125,6 +138,7 @@ try {
                 params.eventTime,
                 params.triggerName,
                 params.hostName,
+                params.hostIP,
                 createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
             );
             var resp = req.Post(params.teamsURL, JSON.stringify(fields));
@@ -134,6 +148,7 @@ try {
             resp = JSON.parse(resp);
     }
     return JSON.stringify(fields);
+    // console.log(JSON.stringify(fields, null , 4));
 } catch (error) {
     throw error;
 }
