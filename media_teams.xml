@@ -1,78 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.4</version>
-    <date>2020-02-19T07:26:48Z</date>
+    <date>2020-02-27T11:32:24Z</date>
     <media_types>
         <media_type>
-            <name>Microsoft Teams</name>
+            <name>Microsoft Teams - Test</name>
             <type>WEBHOOK</type>
             <parameters>
                 <parameter>
-                    <name>event_id</name>
-                    <value>{EVENT.ID}</value>
-                </parameter>
-                <parameter>
-                    <name>event_name</name>
-                    <value>{EVENT.NAME}</value>
-                </parameter>
-                <parameter>
-                    <name>event_value</name>
-                    <value>{EVENT.VALUE}</value>
-                </parameter>
-                <parameter>
-                    <name>event_update_status</name>
-                    <value>{EVENT.UPDATE.STATUS}</value>
-                </parameter>
-                <parameter>
-                    <name>event_severity</name>
+                    <name>eventSeverity</name>
                     <value>{EVENT.SEVERITY}</value>
                 </parameter>
                 <parameter>
-                    <name>event_nseverity</name>
-                    <value>{EVENT.NSEVERITY}</value>
-                </parameter>
-                <parameter>
-                    <name>event_date</name>
+                    <name>eventDate</name>
                     <value>{EVENT.DATE}</value>
                 </parameter>
                 <parameter>
-                    <name>event_time</name>
+                    <name>eventTime</name>
                     <value>{EVENT.TIME}</value>
                 </parameter>
                 <parameter>
-                    <name>trigger_id</name>
-                    <value>{TRIGGER.ID}</value>
-                </parameter>
-                <parameter>
-                    <name>trigger_name</name>
+                    <name>triggerName</name>
                     <value>{TRIGGER.NAME}</value>
                 </parameter>
                 <parameter>
-                    <name>host_name</name>
+                    <name>hostName</name>
                     <value>{HOST.NAME}</value>
                 </parameter>
                 <parameter>
-                    <name>zabbix_url</name>
-                    <value>{$ZABBIX_URL}</value>
+                    <name>teamsURL</name>
+                    <value>== PUT YOUR TEAMS CHANNEL WEBHOOK HERE ==</value>
                 </parameter>
                 <parameter>
-                    <name>teams_url</name>
-                    <value><PUT YOUR CHANNEL WEBHOOK HERE></value>
+                    <name>zabbixURL</name>
+                    <value>== PUT YOUR ZABBIX URL HERE INCLUDING HTTPS:// AND TRAILING /</value>
+                </parameter>
+                <parameter>
+                    <name>eventID</name>
+                    <value>{EVENT.ID}</value>
+                </parameter>
+                <parameter>
+                    <name>eventValue</name>
+                    <value>{EVENT.VALUE}</value>
+                </parameter>
+                <parameter>
+                    <name>eventUpdateStatus</name>
+                    <value>{EVENT.UPDATE.STATUS}</value>
+                </parameter>
+                <parameter>
+                    <name>eventNseverity</name>
+                    <value>{EVENT.NSEVERITY}</value>
+                </parameter>
+                <parameter>
+                    <name>triggerID</name>
+                    <value>{TRIGGER.ID}</value>
                 </parameter>
             </parameters>
-            <script>if (!String.prototype.format) {&#13;
-    String.prototype.format = function() {&#13;
-          var args = arguments;&#13;
-          return this.replace(/{(\d+)}/g, function(match, number) { &#13;
-           return number in args&#13;
-               ? args[number]&#13;
-               : match&#13;
-           ;&#13;
-       });&#13;
-   };&#13;
-}&#13;
-&#13;
-var SEVERITY_COLORS = [&#13;
+            <script>var SEVERITY_COLORS = [&#13;
     &quot;#97AAB3&quot;, // Not classified.&#13;
     &quot;#7499FF&quot;, // Information.&#13;
     &quot;#FFC859&quot;, // Warning.&#13;
@@ -93,24 +77,20 @@ var params = JSON.parse(value),&#13;
     ;&#13;
 &#13;
 function isEventProblem(params) {&#13;
-    return params.event_value == 1 &amp;&amp; params.event_update_status == 0;	&#13;
+    return params.eventValue == 1 &amp;&amp; params.eventUpdateStatus == 0;	&#13;
 }&#13;
 &#13;
 function isEventResolve(params) {&#13;
-	return params.event_value == 0;&#13;
+	return params.eventValue == 0;&#13;
 }&#13;
 &#13;
 function createProblemURL(zabbixURL, triggerID, eventID) {&#13;
-    var problemURL = &quot;{0}/tr_events.php?triggerid={1}&amp;eventid={2}&quot;&#13;
-        .format(&#13;
-            zabbixURL.replace(/\/+$/, &quot;&quot;),&#13;
-            triggerID,&#13;
-            eventID&#13;
-        );&#13;
-    return problemURL;&#13;
+    return zabbixURL.replace(/\/+$/, &quot;&quot;) +&#13;
+    &quot;/tr_events.php?triggerid=&quot; + triggerID +&#13;
+    &quot;&amp;eventid=&quot; + eventID;&#13;
 }&#13;
 &#13;
-function createMessage(&#13;
+function createPayload(&#13;
     eventStatus,&#13;
     eventSeverityColor,&#13;
     eventSeverity,&#13;
@@ -118,29 +98,17 @@ function createMessage(&#13;
     eventTime,&#13;
     triggerName,&#13;
     hostName,&#13;
+    hostIP,&#13;
     problemURL&#13;
     ) {&#13;
-    var message = {&#13;
+    var payload = {&#13;
         &quot;@context&quot;: &quot;http://schema.org/extensions&quot;,&#13;
         &quot;@type&quot;: &quot;MessageCard&quot;,&#13;
-        &quot;title&quot;: &quot;{0}: {1}&quot;.format(eventStatus, triggerName),&#13;
+        &quot;title&quot;: eventStatus + &quot;: &quot; + triggerName,&#13;
         &quot;summary&quot;: &quot;Zabbix notification&quot;,&#13;
         &quot;themeColor&quot;: eventSeverityColor,&#13;
         &quot;sections&quot;: [{&#13;
-            &quot;facts&quot;: [&#13;
-                {&#13;
-                    &quot;name&quot;: &quot;Host&quot;,&#13;
-                    &quot;value&quot;: hostName&#13;
-                },&#13;
-                {&#13;
-                    &quot;name&quot;: &quot;Event time&quot;,&#13;
-                    &quot;value&quot;: &quot;{0} {1}&quot;.format(eventDate, eventTime)&#13;
-                },&#13;
-                {&#13;
-                    &quot;name&quot;: &quot;Severity&quot;,&#13;
-                    &quot;value&quot;: eventSeverity&#13;
-                }&#13;
-            ]&#13;
+            &quot;facts&quot;: []&#13;
         }],&#13;
         &quot;potentialAction&quot;: [&#13;
             {&#13;
@@ -155,46 +123,65 @@ function createMessage(&#13;
             }&#13;
         ]&#13;
     };&#13;
-    return message;&#13;
+    if (hostName) {&#13;
+        payload.sections[0].facts.push({&#13;
+            &quot;name&quot;: &quot;Host&quot;,&#13;
+            &quot;value&quot;: hostName&#13;
+        });&#13;
+    }&#13;
+    if (hostIP) {&#13;
+        payload.sections[0].facts.push({&#13;
+            &quot;name&quot;: &quot;IP&quot;,&#13;
+            &quot;value&quot;: hostIP&#13;
+        });&#13;
+    }&#13;
+    if (eventSeverity) {&#13;
+        payload.sections[0].facts.push({&#13;
+            &quot;name&quot;: &quot;Severity&quot;,&#13;
+            &quot;value&quot;: eventSeverity&#13;
+        });&#13;
+    }&#13;
+    if (eventDate &amp;&amp; eventTime) {&#13;
+        payload.sections[0].facts.push({&#13;
+            &quot;name&quot;: &quot;Event time&quot;,&#13;
+            &quot;value&quot;: eventDate + &quot; &quot; + eventTime&#13;
+        });&#13;
+    }&#13;
+    return payload;&#13;
 }&#13;
 &#13;
 try {&#13;
     req.AddHeader(&quot;Content-Type: application/json; charset=utf-8&quot;);&#13;
     if (isEventProblem(params)) {&#13;
-        fields = createMessage(&#13;
+        fields = createPayload(&#13;
                 EVENT_STATUS.PROBLEM,&#13;
-                SEVERITY_COLORS[params.event_nseverity] || SEVERITY_COLORS[0],&#13;
-                params.event_severity,&#13;
-                params.event_date,&#13;
-                params.event_time,&#13;
-                params.trigger_name,&#13;
-                params.host_name,&#13;
-                createProblemURL(params.zabbix_url, params.trigger_id, params.event_id)&#13;
+                SEVERITY_COLORS[params.eventNseverity] || SEVERITY_COLORS[0],&#13;
+                params.eventSeverity,&#13;
+                params.eventDate,&#13;
+                params.eventTime,&#13;
+                params.triggerName,&#13;
+                params.hostName,&#13;
+                params.hostIP,&#13;
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)&#13;
+            );    &#13;
+    } else if (isEventResolve(params)) {&#13;
+        fields = createPayload(&#13;
+                EVENT_STATUS.RESOLVED,&#13;
+                SEVERITY_COLORS[6],&#13;
+                params.eventSeverity,&#13;
+                params.eventDate,&#13;
+                params.eventTime,&#13;
+                params.triggerName,&#13;
+                params.hostName,&#13;
+                params.hostIP,&#13;
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)&#13;
             );&#13;
-    &#13;
-        var resp = req.Post(params.teams_url, JSON.stringify(fields));&#13;
+    }&#13;
+    var resp = req.Post(params.teamsURL, JSON.stringify(fields));&#13;
         if (req.Status() != 200) {&#13;
             throw JSON.parse(resp).message; &#13;
         }&#13;
         resp = JSON.parse(resp);&#13;
-    &#13;
-    } else if (isEventResolve(params)) {&#13;
-        fields = createMessage(&#13;
-                EVENT_STATUS.RESOLVED,&#13;
-                SEVERITY_COLORS[6],&#13;
-                params.event_severity,&#13;
-                params.event_date,&#13;
-                params.event_time,&#13;
-                params.trigger_name,&#13;
-                params.host_name,&#13;
-                createProblemURL(params.zabbix_url, params.trigger_id, params.event_id)&#13;
-            );&#13;
-            var resp = req.Post(params.teams_url, JSON.stringify(fields));&#13;
-            if (req.Status() != 200) {&#13;
-                throw JSON.parse(resp).message; &#13;
-            }&#13;
-            resp = JSON.parse(resp);&#13;
-    }&#13;
     return JSON.stringify(fields);&#13;
 } catch (error) {&#13;
     throw error;&#13;
