@@ -4,7 +4,7 @@
     <date>2020-02-27T11:32:24Z</date>
     <media_types>
         <media_type>
-            <name>Microsoft Teams - Test</name>
+            <name>Microsoft Teams</name>
             <type>WEBHOOK</type>
             <parameters>
                 <parameter>
