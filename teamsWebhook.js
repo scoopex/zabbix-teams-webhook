@@ -1,15 +1,3 @@
-if (!String.prototype.format) {
-    String.prototype.format = function() {
-          var args = arguments;
-          return this.replace(/{(\d+)}/g, function(match, number) { 
-           return number in args
-               ? args[number]
-               : match
-           ;
-       });
-   };
-}
-
 var SEVERITY_COLORS = [
     "#97AAB3", // Not classified.
     "#7499FF", // Information.
@@ -39,13 +27,14 @@ function isEventResolve(params) {
 }
 
 function createProblemURL(zabbixURL, triggerID, eventID) {
-    var problemURL = "{0}/tr_events.php?triggerid={1}&eventid={2}"
-        .format(
-            zabbixURL.replace(/\/+$/, ""),
-            triggerID,
-            eventID
-        );
-    return problemURL;
+    return zabbixURL.replace(/\/+$/, "") +
+    "/tr_events.php?triggerid=" + triggerID +
+    "&eventid=" + eventID;
+}
+
+function createGraphURL(zabbixURL, itemID) {
+    return zabbixURL.replace(/\/+$/, "") + 
+    "/chart.php?itemids=" + itemID;
 }
 
 function createPayload(
@@ -57,12 +46,13 @@ function createPayload(
     triggerName,
     hostName,
     hostIP,
-    problemURL
+    problemURL,
+    graphURL
     ) {
     var payload = {
         "@context": "http://schema.org/extensions",
         "@type": "MessageCard",
-        "title": "{0}: {1}".format(eventStatus, triggerName),
+        "title": eventStatus + ": " + triggerName,
         "summary": "Zabbix notification",
         "themeColor": eventSeverityColor,
         "sections": [{
@@ -71,11 +61,21 @@ function createPayload(
         "potentialAction": [
             {
                 "@type": "OpenUri",
-                "name": "View in Zabbix",
+                "name": "View event",
                 "targets": [
                     {
                         "os": "default",
                         "uri": problemURL
+                    }
+                ]
+            },
+            {
+                "@type": "OpenUri",
+                "name": "View graph",
+                "targets": [
+                    {
+                        "os": "default",
+                        "uri": graphURL
                     }
                 ]
             }
@@ -102,7 +102,7 @@ function createPayload(
     if (eventDate && eventTime) {
         payload.sections[0].facts.push({
             "name": "Event time",
-            "value": "{0} {1}".format(eventDate, eventTime)
+            "value": eventDate + " " + eventTime
         });
     }
     return payload;
@@ -120,15 +120,9 @@ try {
                 params.triggerName,
                 params.hostName,
                 params.hostIP,
-                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
-            );
-    
-        var resp = req.Post(params.teamsURL, JSON.stringify(fields));
-        if (req.Status() != 200) {
-            throw JSON.parse(resp).message; 
-        }
-        resp = JSON.parse(resp);
-    
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID),
+                createGraphURL(params.zabbixURL, params.itemID)
+            );    
     } else if (isEventResolve(params)) {
         fields = createPayload(
                 EVENT_STATUS.RESOLVED,
@@ -139,16 +133,16 @@ try {
                 params.triggerName,
                 params.hostName,
                 params.hostIP,
-                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID),
+                createGraphURL(params.zabbixURL, params.itemID)
             );
-            var resp = req.Post(params.teamsURL, JSON.stringify(fields));
-            if (req.Status() != 200) {
-                throw JSON.parse(resp).message; 
-            }
-            resp = JSON.parse(resp);
     }
+    var resp = req.Post(params.teamsURL, JSON.stringify(fields));
+        if (req.Status() != 200) {
+            throw JSON.parse(resp).message; 
+        }
+        resp = JSON.parse(resp);
     return JSON.stringify(fields);
-    // console.log(JSON.stringify(fields, null , 4));
 } catch (error) {
     throw error;
 }
