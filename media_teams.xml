@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>4.4</version>
-    <date>2020-02-27T11:32:24Z</date>
+    <date>2020-03-02T10:14:36Z</date>
     <media_types>
         <media_type>
             <name>Microsoft Teams</name>
             <type>WEBHOOK</type>
             <parameters>
                 <parameter>
+                    <name>eventID</name>
+                    <value>{EVENT.ID}</value>
+                </parameter>
+                <parameter>
+                    <name>eventValue</name>
+                    <value>{EVENT.VALUE}</value>
+                </parameter>
+                <parameter>
+                    <name>eventUpdateStatus</name>
+                    <value>{EVENT.UPDATE.STATUS}</value>
+                </parameter>
+                <parameter>
                     <name>eventSeverity</name>
                     <value>{EVENT.SEVERITY}</value>
+                </parameter>
+                <parameter>
+                    <name>eventNseverity</name>
+                    <value>{EVENT.NSEVERITY}</value>
                 </parameter>
                 <parameter>
                     <name>eventDate</name>
@@ -18,6 +34,10 @@
                 <parameter>
                     <name>eventTime</name>
                     <value>{EVENT.TIME}</value>
+                </parameter>
+                <parameter>
+                    <name>triggerID</name>
+                    <value>{TRIGGER.ID}</value>
                 </parameter>
                 <parameter>
                     <name>triggerName</name>
@@ -36,24 +56,8 @@
                     <value>== PUT YOUR ZABBIX URL HERE INCLUDING HTTPS:// AND TRAILING /</value>
                 </parameter>
                 <parameter>
-                    <name>eventID</name>
-                    <value>{EVENT.ID}</value>
-                </parameter>
-                <parameter>
-                    <name>eventValue</name>
-                    <value>{EVENT.VALUE}</value>
-                </parameter>
-                <parameter>
-                    <name>eventUpdateStatus</name>
-                    <value>{EVENT.UPDATE.STATUS}</value>
-                </parameter>
-                <parameter>
-                    <name>eventNseverity</name>
-                    <value>{EVENT.NSEVERITY}</value>
-                </parameter>
-                <parameter>
-                    <name>triggerID</name>
-                    <value>{TRIGGER.ID}</value>
+                    <name>itemID</name>
+                    <value>{ITEM.ID}</value>
                 </parameter>
             </parameters>
             <script>var SEVERITY_COLORS = [&#13;
@@ -90,6 +94,11 @@ function createProblemURL(zabbixURL, triggerID, eventID) {&#13;
     &quot;&amp;eventid=&quot; + eventID;&#13;
 }&#13;
 &#13;
+function createGraphURL(zabbixURL, itemID) {&#13;
+    return zabbixURL.replace(/\/+$/, &quot;&quot;) + &#13;
+    &quot;/chart.php?itemids=&quot; + itemID;&#13;
+}&#13;
+&#13;
 function createPayload(&#13;
     eventStatus,&#13;
     eventSeverityColor,&#13;
@@ -99,7 +108,8 @@ function createPayload(&#13;
     triggerName,&#13;
     hostName,&#13;
     hostIP,&#13;
-    problemURL&#13;
+    problemURL,&#13;
+    graphURL&#13;
     ) {&#13;
     var payload = {&#13;
         &quot;@context&quot;: &quot;http://schema.org/extensions&quot;,&#13;
@@ -113,11 +123,21 @@ function createPayload(&#13;
         &quot;potentialAction&quot;: [&#13;
             {&#13;
                 &quot;@type&quot;: &quot;OpenUri&quot;,&#13;
-                &quot;name&quot;: &quot;View in Zabbix&quot;,&#13;
+                &quot;name&quot;: &quot;View event&quot;,&#13;
                 &quot;targets&quot;: [&#13;
                     {&#13;
                         &quot;os&quot;: &quot;default&quot;,&#13;
                         &quot;uri&quot;: problemURL&#13;
+                    }&#13;
+                ]&#13;
+            },&#13;
+            {&#13;
+                &quot;@type&quot;: &quot;OpenUri&quot;,&#13;
+                &quot;name&quot;: &quot;View graph&quot;,&#13;
+                &quot;targets&quot;: [&#13;
+                    {&#13;
+                        &quot;os&quot;: &quot;default&quot;,&#13;
+                        &quot;uri&quot;: graphURL&#13;
                     }&#13;
                 ]&#13;
             }&#13;
@@ -162,7 +182,8 @@ try {&#13;
                 params.triggerName,&#13;
                 params.hostName,&#13;
                 params.hostIP,&#13;
-                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)&#13;
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID),&#13;
+                createGraphURL(params.zabbixURL, params.itemID)&#13;
             );    &#13;
     } else if (isEventResolve(params)) {&#13;
         fields = createPayload(&#13;
@@ -174,7 +195,8 @@ try {&#13;
                 params.triggerName,&#13;
                 params.hostName,&#13;
                 params.hostIP,&#13;
-                createProblemURL(params.zabbixURL, params.triggerID, params.eventID)&#13;
+                createProblemURL(params.zabbixURL, params.triggerID, params.eventID),&#13;
+                createGraphURL(params.zabbixURL, params.itemID)&#13;
             );&#13;
     }&#13;
     var resp = req.Post(params.teamsURL, JSON.stringify(fields));&#13;
