@@ -208,6 +208,7 @@ try {&#13;
 } catch (error) {&#13;
     throw error;&#13;
 }</script>
+            <show_event_menu>NO</show_event_menu>
             <timeout>5s</timeout>
         </media_type>
     </media_types>
